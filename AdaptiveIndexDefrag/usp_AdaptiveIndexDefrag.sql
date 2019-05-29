@@ -1598,7 +1598,11 @@ CHAR(10) + 'WHERE mst.is_ms_shipped = 0 ' + CASE WHEN @dbScope IS NULL AND @tblN
 					SELECT 'Index', @dbID, DB_NAME(@dbID), @objectID, OBJECT_NAME(@objectID, @dbID), @indexID, @partitionNumber, @dateTimeStart;
 
 					SET @analysis_id = SCOPE_IDENTITY();
-					
+				       
+				       /* For offline rebuilds, set lock timeout if not default */
+				       IF @onlineRebuild = 0 AND @offlinelocktimeout > -1 AND @offlinelocktimeout IS NOT NULL
+				       SET @sqlcommand = 'SET LOCK_TIMEOUT ' + CONVERT(NVARCHAR(15), @offlinelocktimeout) + '; ' + @sqlcommand				       
+				       					
 					BEGIN TRY
 						IF @getBlobfrag = 1
 						BEGIN
@@ -2185,10 +2189,6 @@ WHERE system_type_id IN (34, 35, 99) ' + CASE WHEN @sqlmajorver < 11 THEN 'OR ma
 				
 				/* Set Rebuild command */
 				SET @sqlcommand = N'ALTER INDEX ' + @indexName + N' ON ' + @dbName + N'.' + @schemaName + N'.' + @objectName + REPLACE(@rebuildcommand,', )', ')');
-				
-				/* For offline rebuilds, set lock timeout if not default */
-				IF @onlineRebuild = 0 AND @offlinelocktimeout > -1 AND @offlinelocktimeout IS NOT NULL
-				SET @sqlcommand = 'SET LOCK_TIMEOUT ' + CONVERT(NVARCHAR(15), @offlinelocktimeout) + '; ' + @sqlcommand
 			END
 			ELSE
 			BEGIN
